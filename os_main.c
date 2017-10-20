@@ -26,6 +26,7 @@ int main(void) {
 	printf("Begin program\n");
 	FIFO_q_p new_jobs = fifo_q_new();
 	FIFO_q_p zombie_queue = fifo_q_new();
+	//the ready queue
 	FIFO_q_p* the_mlfq = priority_queue();
 	
 	// Pointer for currently running process
@@ -40,16 +41,16 @@ int main(void) {
 		
 		// Function to create a random number of processes (0 - 5)
 		// Processes are then put in the ready queue
-		create_processes(jobs);
+		create_processes(the_mlfq);
 		
 		// Loop will simulate running of current process
 		// Add a PC value (unsigned int) to current PCB (random between 3000 and 4000)
-		pc += rand() % (4000 + 1 - 3000) + 3000;
+		pc += rand() % (1001) + 3000;
 		
 		if(current == NULL)
 		{
 			printf("Assigning first job\n");
-			current = fifo_q_dequeue(jobs);
+			current = fifo_q_dequeue(new_jobs);
 			current->context->pc = pc;
 			printf("Job assigned\ncurrent = %d\n", current);
 		}
@@ -77,9 +78,9 @@ int main(void) {
 	
 }
 
-void create_processes(FIFO_q_p jobs) {
+void create_processes(FIFO_q_p* jobs) {
 	srand(time(NULL));
-	int n = rand()%5; // get random number of jobs, 0-5
+	int n = rand()%6; // get random number of jobs, 0-5
 	printf("Creating jobs...\n");
 	/* Start creating and adding the jobs to the queue */
 	int i;
@@ -90,7 +91,7 @@ void create_processes(FIFO_q_p jobs) {
 		newjob = pcb_new();
 		pcb_set_state(newjob, status);
 		pcb_assign_pid(newjob);
-		fifo_q_enqueue(jobs, newjob);
+		enqueue_ready(jobs, newjob->priority, newjob);
 	}
 	printf("Jobs created\n");
 }
@@ -174,13 +175,28 @@ void dispatcher(FIFO_q_p* mlfq, PCB_p current) {
 	if(current != NULL)
 	{
 		//printf("current is non-null\n");
+		//increment priority unless at max.
 		current->state = READY;
-		fifo_q_enqueue(jobs, current);
+		if(current->priority < 15) {
+			current->priority += 1;
+		}
+		enqueue_ready(jobs, current);
 	}
-		current = fifo_q_dequeue(jobs);
+		//current = fifo_q_dequeue(jobs);
+		current = nextjob(mlfq);
 		current->state = RUNNING;
 		//printf("Switched state to running\n");
 		/* Pull data from PCB and hand off to system */
 		sys_stack = current->context->pc;
 		/* return to scheduler */ 
+}
+
+PCB_p nextjob(FIFO_q_p* mlfq) {
+	PCB_p nj;
+	int i;
+	for(i = 0; i < 15; i++) {
+		nj = dequeue_ready(mlfq, i);
+		if(nj!= NULL)
+			break;
+	}
 }

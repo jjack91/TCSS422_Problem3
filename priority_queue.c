@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "pcb.h"
-#include "fifo_queue.h"
+#include "fifoqueue.h"
 #include "priority_queue.h"
 
 #define QUEUE_SIZE 16
