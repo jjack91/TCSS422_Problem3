@@ -21,10 +21,12 @@ void dispatcher(FIFO_q_p jobs, PCB_p current);
 /* 	OS Main simulates timer interrupts and scheduling of processes 
 	in a round robin algorithm */
 int main(void) {
-	
+	int special[4];
+	choose_special_ids(special);
 	// List for processes
 	printf("Begin program\n");
 	FIFO_q_p new_jobs = fifo_q_new();
+	FIFO_q_p special_pcbs = fifo_q_new();
 	FIFO_q_p zombie_queue = fifo_q_new();
 	//the ready queue
 	FIFO_q_p* the_mlfq = priority_queue();
@@ -77,13 +79,20 @@ int main(void) {
 	
 	
 }
+void choose_special_ids(int[] arr) {
+	int i;
+	srand(time(NULL));
+	for(i = 0; i <3; i++) {
+		arr[i] = rand()%100;
+	}
+}
 
 void create_processes(FIFO_q_p* jobs) {
 	srand(time(NULL));
 	int n = rand()%6; // get random number of jobs, 0-5
 	printf("Creating jobs...\n");
 	/* Start creating and adding the jobs to the queue */
-	int i;
+	int i,j;
 	PCB_p newjob;
 	enum state_type status = NEW;
 	for(i=0; i<n; i++)
@@ -91,6 +100,14 @@ void create_processes(FIFO_q_p* jobs) {
 		newjob = pcb_new();
 		pcb_set_state(newjob, status);
 		pcb_assign_pid(newjob);
+		int* val = std::find(std::begin(special), std::end(special), newjob->pid);
+		if (val != std::end(special)) {
+			fifo_q_enqueue(newjob);
+
+		}
+		/*for(j = 0; j<3; j++) {
+
+		}*/
 		enqueue_ready(jobs, newjob->priority, newjob);
 	}
 	printf("Jobs created\n");
@@ -192,7 +209,7 @@ void dispatcher(FIFO_q_p* mlfq, PCB_p current) {
 }
 
 PCB_p nextjob(FIFO_q_p* mlfq) {
-	PCB_p nj;
+	PCB_p nj = NULL;
 	int i;
 	for(i = 0; i < 15; i++) {
 		nj = dequeue_ready(mlfq, i);
