@@ -7,16 +7,20 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#define MAX_LOOPS 16
+
 int sys_stack = 0;
 int output_tick = 0;
 //int g_pid = 0;
 
 enum interrupt_type {TIMER, IO, EXCEPTION}; // IO and Exception states won't be used (yet),
 											// but includded for completeness
-
-void isr(FIFO_q_p jobs, PCB_p current, unsigned int * pc);
-void scheduler(enum interrupt_type interrupt, FIFO_q_p jobs, PCB_p current);
-void dispatcher(FIFO_q_p jobs, PCB_p current);
+void create_processes(FIFO_q_p, FIFO_q_p);
+PCB_p nextjob(FIFO_q_p*);
+void choose_special_ids(int[]);
+void isr(FIFO_q_p, PCB_p, unsigned int * pc, FIFO_q_p*, FIFO_q_p);
+void scheduler(enum interrupt_type, FIFO_q_p, PCB_p current, FIFO_q_p*, FIFO_q_p);
+void dispatcher(FIFO_q_p*, PCB_p);
 
 /* 	OS Main simulates timer interrupts and scheduling of processes 
 	in a round robin algorithm */
@@ -43,7 +47,7 @@ int main(void) {
 		
 		// Function to create a random number of processes (0 - 5)
 		// Processes are then put in the ready queue
-		create_processes(the_mlfq);
+		create_processes(new_jobs, special_pcbs);
 		
 		// Loop will simulate running of current process
 		// Add a PC value (unsigned int) to current PCB (random between 3000 and 4000)
@@ -64,7 +68,10 @@ int main(void) {
 		sys_stack = pc;
 		
 		int is_terminate = rand()%100;
-		if(is_terminate <= 15 /* && !privileged_few*/)
+		if(is_terminate <= 15 && (current->pid != special[0]
+			|| current->pid != special[1]
+			|| current->pid != special[2]
+			|| current->pid != special[3]))
 		{
 			enum state_type status = HALTED;
 			pcb_set_state(current, status);
@@ -72,14 +79,15 @@ int main(void) {
 		
 		// Simulate timer interrupt / call a pseudo-ISR
 		/*	Call this when job uses up alloted quantum for its priority level	*/
-		isr(jobs, current, &pc); // TODO: change to accept MLFQ
+		isr(zombie_queue, current, &pc, the_mlfq, new_jobs); // TODO: change to accept MLFQ
 		printf("-------------------\n"); //For loop tracking
+		//if () // TODO: Make terminating condition
 	}
 	
 	
 	
 }
-void choose_special_ids(int[] arr) {
+void choose_special_ids(int arr[]) {
 	int i;
 	srand(time(NULL));
 	for(i = 0; i <3; i++) {
@@ -87,7 +95,7 @@ void choose_special_ids(int[] arr) {
 	}
 }
 
-void create_processes(FIFO_q_p* jobs) {
+void create_processes(FIFO_q_p new_jobs_q, FIFO_q_p privileged) {
 	srand(time(NULL));
 	int n = rand()%6; // get random number of jobs, 0-5
 	printf("Creating jobs...\n");
@@ -102,32 +110,32 @@ void create_processes(FIFO_q_p* jobs) {
 		pcb_assign_pid(newjob);
 		int* val = std::find(std::begin(special), std::end(special), newjob->pid);
 		if (val != std::end(special)) {
-			fifo_q_enqueue(newjob);
+			fifo_q_enqueue(privileged, newjob);
 
 		}
-		/*for(j = 0; j<3; j++) {
-
-		}*/
-		enqueue_ready(jobs, newjob->priority, newjob);
+		else
+		{
+			fifo_q_enqueue(new_jobs_q, newjob);
+		}
 	}
 	printf("Jobs created\n");
 }
 
-void isr(FIFO_q_p jobs, PCB_p current, unsigned int * pc, FIFO_q_p* mlfq) {
+void isr(FIFO_q_p terminate_q, PCB_p current, unsigned int * pc, FIFO_q_p* mlfq, FIFO_q_p new_jobs_q) {
 	// ISR will change the state of the running process to interrupted,
 	// save the CPU state (PC) to the PCB for that process, and do an up-call (scheduler)
-	if(current != NULL)
+	if(current != NULL && current->state != HALTED)
 	{
 		current->state = INTERRUPTED;
 		current->context->pc = *pc;
 	}
-	scheduler(TIMER, jobs, current, mlfq);
+	scheduler(TIMER, terminate_q, current, mlfq, new_jobs_q);
 	// Performs pseudo-IRET/returns to main loop
 }
 
 /*  TODO: Alter scheduler to accept a priority queue object and implement rules
 	for checking priority acording to MLFQ rules */
-void scheduler(enum interrupt_type interrupt, FIFO_q_p special_q, PCB_p current, FIFO_q_p* mlfq) {
+void scheduler(enum interrupt_type interrupt, FIFO_q_p special_q, PCB_p current, FIFO_q_p* mlfq, FIFO_q_p new_jobs_q) {
 	// Determines that the scheduler only needs to put the process back
 	// in the ready queue and change its state from interrupted to ready.
 	 
@@ -141,48 +149,36 @@ void scheduler(enum interrupt_type interrupt, FIFO_q_p special_q, PCB_p current,
 	{
 	//	dispatcher(jobs, current);
 	
-	// Each time a process is scheduled, print a message with its contents
-		if(current == NULL)
-		{
-			printf("Assigning new job!\n");
-		}
-		else
-		{
-			printf("Outputting...\n");
-			char sys_message[256] = "";
-			//sys_message = pcb_to_string(current, sys_message);
-			printf("Scheduling process: %s\n", pcb_to_string(current, sys_message));
-		}
 	// Calls dispatcher
-	// At every fourth context switch/call to dispatcher, print contents of running PCB
-	// and "Switching to: " contents of ready queue head
-		/*if(output_tick==4)
-		{
-			char sys_message[256] = "";
-		
-			printf("===============\n");
-			printf("Currently running: %s\n", pcb_to_string(current, sys_message));
-			printf("Switching to: %s\n", pcb_to_string(jobs->front->process, sys_message));
-		}*/
-		
-		dispatcher(jobs, current);
-		
-		/*if(output_tick==4)
-		{
-			char sys_message[256] = "";
-		
-			printf("Now running: %s\n", pcb_to_string(current, sys_message));
-			printf("Switched from: %s\n", pcb_to_string(jobs->back->process, sys_message));
-			printf("Contents of queue: %s\n", fifo_q_to_string(jobs, sys_message));
-			printf("===============\n");
-			output_tick = 0;
-		}*/
+
+		dispatcher(mlfq, current);
+
 		output_tick++;
-	// After context switch, print the same two PCBs to show different contents
-	// Also print ready queue
+
 	// Additional housekeeping
-	// Returns to isr
+	
 	}
+	/*	Check for and schedule new jobs	*/
+	if (new_jobs_q->length > 0)
+	{
+		PCB_p tmp = NULL;
+		while (new_jobs_q->length > 0)
+		{
+			tmp = fifo_q_dequeue(new_jobs_q);
+			enqueue_ready(mlfq, tmp->priority, tmp);
+		}
+	}
+	
+	/*	Kill off zombie jobs if more than 10 exist	*/
+	if (special_q->length >= 10)
+	{
+		while (special_q->length > 0)
+		{
+			fifo_q_dequeue(special_q);
+		}
+	}
+	
+	// Returns to isr
 }
 
 void dispatcher(FIFO_q_p* mlfq, PCB_p current) {
@@ -197,7 +193,7 @@ void dispatcher(FIFO_q_p* mlfq, PCB_p current) {
 		if(current->priority < 15) {
 			current->priority += 1;
 		}
-		enqueue_ready(jobs, current);
+		enqueue_ready(mlfq, current->priority, current);
 	}
 		//current = fifo_q_dequeue(jobs);
 		current = nextjob(mlfq);
