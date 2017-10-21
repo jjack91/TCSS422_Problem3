@@ -11,6 +11,12 @@
 
 int sys_stack = 0;
 int output_tick = 0;
+/*
+ * This is used to set the current quantum length.
+ * Quantum lengths are the current priority level,
+ * and all previous priority levels added together.
+ */
+int curr_quantum = 1;
 //int g_pid = 0;
 
 enum interrupt_type {TIMER, IO, EXCEPTION}; // IO and Exception states won't be used (yet),
@@ -51,7 +57,7 @@ int main(void) {
 		
 		// Loop will simulate running of current process
 		// Add a PC value (unsigned int) to current PCB (random between 3000 and 4000)
-		pc += rand() % (1001) + 3000;
+		//pc += rand() % (1001) + 3000;
 		
 		if(current == NULL)
 		{
@@ -61,27 +67,33 @@ int main(void) {
 			printf("Job assigned\ncurrent = %d\n", current);
 		}
 		
-		
-		
-		
-		// Pseudo-push of PC to system stack
-		sys_stack = pc;
-		
-		int is_terminate = rand()%100;
-		if(is_terminate <= 15 && (current->pid != special[0]
-			|| current->pid != special[1]
-			|| current->pid != special[2]
-			|| current->pid != special[3]))
+		int i;
+		for (i = 0; i < curr_quantum; i++)
 		{
-			enum state_type status = HALTED;
-			pcb_set_state(current, status);
+			pc += rand()%(1000) + 500;
+			// Pseudo-push of PC to system stack
+			sys_stack = pc;
+		
+			int is_terminate = rand()%100;
+			if(is_terminate <= 15 && (current->pid != special[0]
+				|| current->pid != special[1]
+				|| current->pid != special[2]
+				|| current->pid != special[3]))
+			{
+				enum state_type status = HALTED;
+				pcb_set_state(current, status);
+			}
+		
 		}
 		
 		// Simulate timer interrupt / call a pseudo-ISR
 		/*	Call this when job uses up alloted quantum for its priority level	*/
 		isr(zombie_queue, current, &pc, the_mlfq, new_jobs); // TODO: change to accept MLFQ
 		printf("-------------------\n"); //For loop tracking
-		//if () // TODO: Make terminating condition
+		if (output_tick >= MAX_LOOPS)
+		{
+			return 0;
+		}
 	}
 	
 	
@@ -156,6 +168,12 @@ void scheduler(enum interrupt_type interrupt, FIFO_q_p special_q, PCB_p current,
 		output_tick++;
 
 	// Additional housekeeping
+	
+	int i;
+	for (i = 0; i < current->priority; i++)
+	{
+		curr_quantum+=current->priority;
+	}
 	
 	}
 	/*	Check for and schedule new jobs	*/
