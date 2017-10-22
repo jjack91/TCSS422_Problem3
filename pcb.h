@@ -1,4 +1,4 @@
-// Jacob Ackerman and Jenna Hand
+//Jacob Ackerman and Josh Lau
 
 #ifndef PCB_H_INCLUDED
 #define PCB_H_INCLUDED

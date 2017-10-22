@@ -1,4 +1,4 @@
-// Jacob Ackerman and Jenna Hand
+//Jacob Ackerman and Josh Lau
 
 #ifndef FIFOQUEUE_H_INCLUDED
 #define FIFOQUEUE_H_INCLUDED

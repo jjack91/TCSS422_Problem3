@@ -1,4 +1,4 @@
-// Jacob Ackerman and Jenna Hand
+//Jacob Ackerman and Josh Lau
 
 #include "pcb.h"
 #include <stdlib.h>
@@ -13,6 +13,7 @@ PCB_p pcb_new(void) {
 	PCB_p this = (PCB_p) malloc(sizeof(PCB_s));
 	// initialize new PCB
 	pcb_init(this);
+	//this->context = (CPU_context_p) malloc(sizeof(CPU_context_s));
 	return this;
 }
 

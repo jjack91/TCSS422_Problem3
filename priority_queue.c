@@ -1,3 +1,5 @@
+//Jacob Ackerman and Josh Lau
+
 #include <stdio.h>
 #include <stdlib.h>
 #include "pcb.h"
@@ -31,17 +33,18 @@ int priority_queue_destructor(FIFO_q_p* q)
 
 int enqueue_ready(FIFO_q_p* theready_q, unsigned char priority, PCB_p the_pcb)
 {
-  if (theready_q == NULL) return -1;
+	if (theready_q == NULL) 
+		return -1;
 	FIFO_q_p q = theready_q[priority];
 	fifo_q_enqueue(q, the_pcb);
-  return 0;
+	return 0;
 }
 
 PCB_p dequeue_ready(FIFO_q_p* theready_q, unsigned char priority)
 {
   if (theready_q == NULL) return NULL;
 	FIFO_q_p q = theready_q[priority];
-	if(fifo_q_is_empty(q)==0)
+	if(fifo_q_is_empty(q)==1)
 	{
 		printf("This queue is empty!\n");
 		return NULL;

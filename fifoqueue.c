@@ -1,4 +1,4 @@
-// Jacob Ackerman and Jenna Hand
+//Jacob Ackerman and Josh Lau
 
 #include "fifoqueue.h"
 #include "pcb.h"
@@ -12,7 +12,7 @@ FIFO_q_p fifo_q_new(void) {
 	//Instantiate on heap
     FIFO_q_p this = (FIFO_q_p) malloc(sizeof(FIFO_q_s));
 	// Check that malloc was successful
-    if (!this)
+    if (this == NULL)
         return NULL;
 	// Initialize members
     this->length = 0;
@@ -76,8 +76,8 @@ int fifo_q_is_empty(FIFO_q_p queue) {
 int fifo_q_enqueue(FIFO_q_p queue, PCB_p process) {
     if (!queue || !process)
         return 0;
-    Node_p node = calloc(1, sizeof(Node_s));
-    if (!node)
+    Node_p node = malloc(sizeof(Node_s));
+    if (node == NULL)
         return 0;
     node->process = process;
     node->next = NULL;
